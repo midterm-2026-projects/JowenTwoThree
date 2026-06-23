@@ -1,0 +1,94 @@
+.table-container {
+  background: transparent;
+  overflow: hidden;
+}
+
+.table-wrapper {
+  overflow-x: auto;
+}
+
+.inventory-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 14px;
+}
+
+.inventory-table thead {
+  background: #ffffff;
+  border-bottom: 1px solid #e5e7eb;
+}
+
+.inventory-table th {
+  padding: 12px 16px;
+  text-align: left;
+  font-weight: 600;
+  color: #111827;
+  text-transform: uppercase;
+  font-size: 12px;
+  white-space: nowrap;
+  border-bottom: 1px solid #e5e7eb;
+}
+
+.inventory-table td {
+  padding: 12px 16px;
+  border-bottom: 1px solid #f3f4f6;
+  color: #111827;
+}
+
+.item-id {
+  font-weight: 600;
+}
+
+.item-name {
+  font-weight: 500;
+}
+
+.item-category {
+  color: #374151;
+}
+
+.item-stock {
+  font-weight: 600;
+}
+
+.status-badge {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: 9999px;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.status-good {
+  background: #ecfdf5;
+  color: #065f46;
+}
+
+.status-low {
+  background: #fffbeb;
+  color: #92400e;
+}
+
+.status-critical {
+  background: #fef2f2;
+  color: #991b1b;
+}
+
+.empty-state {
+  padding: 24px;
+  text-align: center;
+  color: #6b7280;
+}
+
+.empty-state p {
+  margin: 0;
+  font-size: 16px;
+}
+
+@media (max-width: 768px) {
+  .inventory-table th,
+  .inventory-table td {
+    padding: 10px 12px;
+    font-size: 13px;
+  }
+}
