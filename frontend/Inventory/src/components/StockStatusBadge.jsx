@@ -1,6 +1,5 @@
 import React from 'react';
 
-
 const getStatusColor = (status) => {
   switch (status) {
     case 'Good':

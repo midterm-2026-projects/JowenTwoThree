@@ -1,6 +1,5 @@
 import React from 'react';
 
-
 export default function SearchInput({ value, onChange, placeholder = 'Search items...' }) {
   return (
     <input

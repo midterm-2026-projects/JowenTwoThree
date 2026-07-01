@@ -1,6 +1,5 @@
 import React from 'react';
 
-
 export default function FilterDropdown({ categories, selectedCategory, onChange }) {
   return (
     <select
