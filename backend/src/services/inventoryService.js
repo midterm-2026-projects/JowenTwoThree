@@ -1,4 +1,4 @@
-const { inventory } = require('./inventoryStore')
+const inventorySupabaseStore = require('./inventorySupabaseStore')
 
 function computeStatus(inStock) {
   if (inStock === 0) return 'OutOfStock'
@@ -7,11 +7,36 @@ function computeStatus(inStock) {
   return 'Good'
 }
 
-function listInventory({ q, category } = {}) {
+function mapInventoryRow(row) {
+  const id = row.id
+  const name = row.item_name
+  const category = row.category_name
+  const inStock = Number(row.current_stock ?? row.in_stock ?? 0)
+
+  return {
+    id,
+    name,
+    category,
+    inStock,
+    status: computeStatus(inStock),
+  }
+}
+
+async function listInventory({ q, category } = {}) {
   const keyword = typeof q === 'string' ? q.trim().toLowerCase() : ''
   const normalizedCategory = typeof category === 'string' ? category.trim() : ''
 
-  let result = inventory
+  // If Supabase is not configured (common in local/test runs), fall back to in-memory inventory.
+  let rows
+  try {
+    rows = await inventorySupabaseStore.getAllInventory()
+  } catch (err) {
+    const { inventory } = require('./inventoryStore')
+    return inventory
+  }
+
+  let result = rows.map(mapInventoryRow)
+
 
   if (normalizedCategory) {
     result = result.filter((item) => item.category === normalizedCategory)
@@ -30,7 +55,11 @@ function listInventory({ q, category } = {}) {
 }
 
 function updateInventoryById(id, { quantity, reason, notes } = {}) {
+  // Keep the existing in-memory update behavior to avoid breaking other flows.
+  const { inventory } = require('./inventoryStore')
+
   const item = inventory.find((it) => it.id === id)
+
   if (!item) {
     const err = new Error('Inventory item not found')
     err.statusCode = 404
@@ -49,12 +78,9 @@ function updateInventoryById(id, { quantity, reason, notes } = {}) {
     throw err
   }
 
-  // quantity can be positive (restock) or negative (consumption/usage)
   const newStock = item.inStock + quantity
   item.inStock = newStock
   item.status = computeStatus(newStock)
-
-  // notes/reason accepted for future audit log (not stored in this simplified version)
   void notes
 
   return item
@@ -65,4 +91,6 @@ module.exports = {
   listInventory,
   updateInventoryById,
 }
+
+
 
