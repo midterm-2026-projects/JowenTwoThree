@@ -6,27 +6,22 @@
 
 **Week:** 4 | **Day:** 1
 
-## Task: Inventory Core (Back-End)
+## Task: Database SetUp (Back-End)
 
 ### Sub-Tasks (Breakdown)
-- Design inventory database schema (columns: ITEM ID, NAME, CATEGORY, IN STOCK, STATUS).
-- Create inventory migration files.
-- Develop Inventory model/entity.
-- Build inventory retrieval API endpoint.
-- Implement API response formatting.
-
+- Set Up Supabase Client
+- Creating SQL Schema
+- Developing Tables and Policies
+ 
 ### Deliverable(s)
-- Inventory database schema.
-- Inventory model/entity.
-- Inventory retrieval API endpoint.
-- Standardized API response structure.
+- SQL Schema File
+- Supabase Client File 
+- Adding RLS Policies
 
 ### Test Suite / PR Acceptance Criteria
-- User can view all inventory records retrieved from the system database.
-- User can see accurate product information displayed on the inventory page.
-- User can refresh the page and still view inventory data.
-- User can see current stock quantities for all products.
-- User can access inventory information without loading errors.
+- The user can call supabase server
+- The user can retrieve data from the tables
+- The user can retrieve specific data from the server
 
 ### Instructor Notes
 
