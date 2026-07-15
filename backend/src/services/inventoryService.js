@@ -29,17 +29,17 @@ async function listInventory({ q, category } = {}) {
   const keyword = typeof q === 'string' ? q.trim().toLowerCase() : ''
   const normalizedCategory = typeof category === 'string' ? category.trim() : ''
 
-  // If Supabase is not configured (common in local/test runs), fall back to in-memory inventory.
   let rows
   try {
     rows = await inventorySupabaseStore.getAllInventory()
   } catch (err) {
+    console.log('err', err)
+
     const { inventory } = require('./inventoryStore')
     return inventory
   }
 
   let result = rows.map(mapInventoryRow)
-
 
   if (normalizedCategory) {
     result = result.filter((item) => item.category === normalizedCategory)
@@ -58,7 +58,7 @@ async function listInventory({ q, category } = {}) {
 }
 
 function updateInventoryById(id, { quantity, reason, notes } = {}) {
-  // Keep the existing in-memory update behavior to avoid breaking other flows.
+
   const { inventory } = require('./inventoryStore')
 
   const item = inventory.find((it) => it.id === id)
@@ -91,9 +91,7 @@ function updateInventoryById(id, { quantity, reason, notes } = {}) {
 
 module.exports = {
   computeStatus,
+  mapInventoryRow,
   listInventory,
   updateInventoryById,
 }
-
-
-
