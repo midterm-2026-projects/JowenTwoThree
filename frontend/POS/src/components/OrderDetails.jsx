@@ -15,9 +15,11 @@ export default function OrderDetails({
   const [discountType, setDiscountType] = useState('none')
   const [discountValue, setDiscountValue] = useState('')
   const [showReceipt, setShowReceipt] = useState(false)
+  const [checkoutAttempted, setCheckoutAttempted] = useState(false)
 
   const totalItems = cart.reduce((sum, item) => sum + item.quantity, 0)
   const subtotal = cart.reduce((sum, item) => sum + (item.price * item.quantity), 0)
+  const isCartEmpty = cart.length === 0
 
   const numericDiscountValue = Number(discountValue) || 0
 
@@ -28,6 +30,55 @@ export default function OrderDetails({
     : 0
 
   const totalAmount = subtotal - discountAmount
+
+  const discountError = (() => {
+    if (discountType === 'none') return null
+    if (isCartEmpty) {
+      return 'Add an item to the cart before applying a discount.'
+    }
+    if (discountValue === '' || numericDiscountValue <= 0) {
+      return 'Enter a discount value greater than 0.'
+    }
+    if (discountType === 'percentage' && numericDiscountValue >= 100) {
+      return 'Discount cannot be 100% or more of the total amount.'
+    }
+    if (discountType === 'fixed' && numericDiscountValue >= subtotal) {
+      return 'Discount cannot be equal to or greater than the total amount.'
+    }
+    return null
+  })()
+
+  const specialInstructionsError = isCartEmpty
+    ? 'Add an item to the cart before adding special instructions.'
+    : null
+
+  const cartErrors = cart.reduce((errors, item) => {
+    if (!item.quantity || item.quantity <= 0) {
+      errors.push(`${item.name} has an invalid quantity.`)
+    }
+    return errors
+  }, [])
+
+  const canCheckout = cart.length > 0 && cartErrors.length === 0 && !discountError
+
+  const resetDiscount = () => {
+    setDiscountType('none')
+    setDiscountValue('')
+  }
+
+  const handleCheckout = () => {
+    setCheckoutAttempted(true)
+    if (!canCheckout) return
+    onCheckout()
+    resetDiscount()
+    setCheckoutAttempted(false)
+  }
+
+  const handleClearCart = () => {
+    onClearCart()
+    resetDiscount()
+    setCheckoutAttempted(false)
+  }
 
   return (
     <div className="order-details" data-testid="order-details">
@@ -43,6 +94,15 @@ export default function OrderDetails({
         </div>
       </div>
 
+      {checkoutAttempted && cartErrors.length > 0 && (
+        <div className="cart-errors" data-testid="cart-errors">
+          <ul>
+            {cartErrors.map((err, i) => (
+              <li key={i}>{err}</li>
+            ))}
+          </ul>
+        </div>
+      )}
 
       <div className="cart-items">
       
@@ -99,12 +159,18 @@ export default function OrderDetails({
         </label>
         <textarea
           id="special-instructions-input"
-          className="special-instructions-input"
+          className={`special-instructions-input${specialInstructionsError ? ' input-error' : ''}`}
           data-testid="special-instructions"
           placeholder="e.g. no sugar, allergies..."
           value={specialInstructions}
           onChange={(e) => onSpecialInstructionsChange(e.target.value)}
+          disabled={isCartEmpty}
         />
+        {specialInstructionsError && (
+          <p className="special-instructions-error" data-testid="special-instructions-error">
+            {specialInstructionsError}
+          </p>
+        )}
       </div>
 
       <div className="discount-section" data-testid="discount-section">
@@ -115,6 +181,7 @@ export default function OrderDetails({
             value={discountType}
             onChange={(e) => { setDiscountType(e.target.value); setDiscountValue('') }}
             data-testid="discount-type-select"
+            disabled={isCartEmpty}
           >
             <option value="none">No Discount</option>
             <option value="percentage">Percentage (%)</option>
@@ -124,16 +191,20 @@ export default function OrderDetails({
           {discountType !== 'none' && (
             <input
               type="number"
-              className="discount-value-input"
+              className={`discount-value-input${discountError ? ' input-error' : ''}`}
               value={discountValue}
               onChange={(e) => setDiscountValue(e.target.value === '' ? '' : Number(e.target.value))}
               min="0"
               max={discountType === 'percentage' ? 100 : subtotal}
               placeholder={discountType === 'percentage' ? 'e.g. 10' : 'e.g. 50'}
               data-testid="discount-value-input"
+              disabled={isCartEmpty}
             />
           )}
         </div>
+        {discountError && (
+          <p className="discount-error" data-testid="discount-error">{discountError}</p>
+        )}
       </div>
 
       <div className="total-section" data-testid="total-section">
@@ -162,7 +233,7 @@ export default function OrderDetails({
       <div className="order-actions">
         <button
           className="clear-btn"
-          onClick={onClearCart}
+          onClick={handleClearCart}
           disabled={cart.length === 0}
           data-testid="clear-cart-btn"
         >
@@ -178,7 +249,7 @@ export default function OrderDetails({
         </button>
         <button
           className="checkout-btn"
-          onClick={onCheckout}
+          onClick={handleCheckout}
           disabled={cart.length === 0}
           data-testid="checkout-btn"
         >
