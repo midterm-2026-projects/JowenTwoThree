@@ -8,12 +8,7 @@ function __setSupabaseClient(getterFn) {
 async function getAllInventory() {
   const supabase = supabaseClientGetter()
 
-  // Join inventory_items -> inventory_categories and normalize field names.
-  const { data, error } = await supabase
-    .from('inventory_items')
-    .select(
-      'id, item_name, current_stock, inventory_categories(name)'
-    )
+  const { data, error } = await supabase.from('inventory').select('*')
 
   if (error) {
     const err = new Error(error.message || 'Failed to fetch inventory')
@@ -21,24 +16,15 @@ async function getAllInventory() {
     throw err
   }
 
-  // Supabase nested join returns `inventory_categories: { name }` (or array depending on relationship).
-  return (data || []).map((row) => ({
-    ...row,
-    category_name:
-      row?.inventory_categories?.name ??
-      row?.inventory_categories?.[0]?.name ??
-      null,
-  }))
+  return data
 }
 
 async function getInventoryById(id) {
   const supabase = supabaseClientGetter()
 
   const { data, error } = await supabase
-    .from('inventory_items')
-    .select(
-      'id, item_name, current_stock, inventory_categories(name)'
-    )
+    .from('inventory')
+    .select('*')
     .eq('id', id)
     .single()
 
@@ -48,14 +34,7 @@ async function getInventoryById(id) {
     throw err
   }
 
-  return {
-    ...data,
-    category_name:
-      data?.inventory_categories?.name ??
-      data?.inventory_categories?.[0]?.name ??
-      null,
-  }
-
+  return data
 }
 
 module.exports = {
@@ -63,6 +42,4 @@ module.exports = {
   getInventoryById,
   __setSupabaseClient,
 }
-
-
 

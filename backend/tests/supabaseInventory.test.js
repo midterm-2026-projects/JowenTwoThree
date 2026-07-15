@@ -6,20 +6,8 @@ const { __setSupabaseClient, getAllInventory, getInventoryById } = inventoryStor
 describe('Supabase Inventory Store', () => {
   test('calls supabase and returns all inventory rows', async () => {
     const mockData = [
-      {
-        id: 'I-001',
-        item_name: 'Coffee Beans',
-        current_stock: 25,
-        category_id: 'CAT-1',
-        inventory_categories: { name: 'Beverage' },
-      },
-      {
-        id: 'I-002',
-        item_name: 'Milk',
-        current_stock: 10,
-        category_id: 'CAT-2',
-        inventory_categories: { name: 'Dairy' },
-      },
+      { id: 'I-001', name: 'Coffee Beans', category: 'Beverage', inStock: 25 },
+      { id: 'I-002', name: 'Milk', category: 'Dairy', inStock: 10 },
     ]
 
     const fromMock = vi.fn().mockReturnValue({
@@ -30,26 +18,12 @@ describe('Supabase Inventory Store', () => {
 
     const data = await getAllInventory()
 
-    expect(fromMock).toHaveBeenCalledWith('inventory_items')
-    expect(data).toEqual([
-      {
-        ...mockData[0],
-        category_name: 'Beverage',
-      },
-      {
-        ...mockData[1],
-        category_name: 'Dairy',
-      },
-    ])
+    expect(fromMock).toHaveBeenCalledWith('inventory')
+    expect(data).toEqual(mockData)
   })
 
   test('returns specific inventory row by id using eq + single', async () => {
-    const mockRow = {
-      id: 'I-001',
-      item_name: 'Coffee Beans',
-      current_stock: 25,
-      inventory_categories: { name: 'Beverage' },
-    }
+    const mockRow = { id: 'I-001', name: 'Coffee Beans' }
 
     const singleChain = vi.fn().mockResolvedValue({ data: mockRow, error: null })
 
@@ -63,11 +37,8 @@ describe('Supabase Inventory Store', () => {
 
     const data = await getInventoryById('I-001')
 
-    expect(fromMock).toHaveBeenCalledWith('inventory_items')
-    expect(data).toEqual({
-      ...mockRow,
-      category_name: 'Beverage',
-    })
+    expect(fromMock).toHaveBeenCalledWith('inventory')
+    expect(data).toEqual(mockRow)
   })
 
   test('throws an error when supabase returns an error for list', async () => {

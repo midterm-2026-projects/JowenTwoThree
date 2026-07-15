@@ -1,33 +1,31 @@
-const { createClient } = require('@supabase/supabase-js')
-
 // Supabase client abstraction.
-// Tests should mock this module by mocking/overriding getSupabase().
+//
+// Tests should mock this module to return a fake Supabase client.
+// Real runtime can later replace the placeholder with @supabase/supabase-js.
 
-let cachedClient = null
-
-function getSupabase() {
-  if (cachedClient) return cachedClient
-
-  const url = process.env.SUPABASE_URL
-  const anonKey = process.env.SUPABASE_ANON_KEY
-
-  // Keep runtime safe for local/test runs that don't configure Supabase.
-  if (!url || !anonKey) {
-    return {
-      from() {
-        throw new Error(
-          'Supabase client not configured. Set SUPABASE_URL and SUPABASE_ANON_KEY environment variables.'
-        )
-      },
-    }
+function createSupabasePlaceholder() {
+  return {
+    from() {
+      throw new Error(
+        'Supabase client not configured. Provide a real implementation or mock this module in tests.'
+      )
+    },
   }
-
-  cachedClient = createClient(url, anonKey)
-  return cachedClient
 }
 
-module.exports = { getSupabase }
+/**
+ * Returns a Supabase-like client.
+ *
+ * Note: This backend currently runs without @supabase/supabase-js. The
+ * placeholder keeps runtime safe; tests mock this module.
+ */
+function getSupabase() {
+  return createSupabasePlaceholder()
+}
 
+module.exports = {
+  getSupabase,
+}
 
 
 
