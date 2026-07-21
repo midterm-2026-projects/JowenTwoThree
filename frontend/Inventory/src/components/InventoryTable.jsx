@@ -1,19 +1,11 @@
-import React, { useState, useMemo } from 'react';
+// src/components/InventoryTable.jsx
+import React, { useEffect, useMemo, useState } from 'react';
 import StockStatusBadge from './StockStatusBadge';
 import SearchInput from './SearchInput';
 import FilterDropdown from './FilterDropdown';
 import InventoryAdjustmentForm from './InventoryAdjustmentForm';
+import { fetchInventory, updateInventory } from '../services/inventoryApi';
 
-// Initial mock data
-const initialMockData = [
-  { id: 'I-001', name: 'Coffee Beans', category: 'Beverage', inStock: 25, status: 'Good' },
-  { id: 'I-002', name: 'Milk', category: 'Dairy', inStock: 5, status: 'Low' },
-  { id: 'I-003', name: 'Yogurt', category: 'Dairy', inStock: 8, status: 'NearingExpiration' },
-  { id: 'I-004', name: 'Croissant', category: 'Pastry', inStock: 20, status: 'Good' },
-  { id: 'I-005', name: 'Cookies', category: 'Snacks', inStock: 3, status: 'Low' },
-];
-
-// Helper function to calculate stock status
 const calculateStatus = (inStock) => {
   if (inStock === 0) return 'OutOfStock';
   if (inStock <= 5) return 'Low';
@@ -22,128 +14,217 @@ const calculateStatus = (inStock) => {
 };
 
 export default function InventoryTable() {
-  // State management for inventory data
-  const [inventoryData, setInventoryData] = useState(initialMockData);
+  const [inventoryData, setInventoryData] = useState([]);
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('');
   const [isAdjustmentFormOpen, setIsAdjustmentFormOpen] = useState(false);
   const [selectedItem, setSelectedItem] = useState(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [errorMessage, setErrorMessage] = useState(null);
+  const [toast, setToast] = useState(null);
 
-  // Extract unique categories from current data
+  const loadInventory = async () => {
+    console.log("========== LOAD INVENTORY ==========");
+    console.log("Loading inventory...");
+
+    setIsLoading(true);
+    setErrorMessage(null);
+
+    try {
+      const data = await fetchInventory();
+
+      console.log("Raw data returned from fetchInventory():", data);
+      console.log("Is Array:", Array.isArray(data));
+      console.log("Number of items:", Array.isArray(data) ? data.length : 0);
+
+      if (Array.isArray(data) && data.length > 0) {
+        console.table(data);
+      }
+
+      const itemsWithStatus = (Array.isArray(data) ? data : []).map((item) => ({
+        ...item,
+        status: calculateStatus(item.inStock),
+      }));
+
+      console.log("Items after status mapping:");
+      console.table(itemsWithStatus);
+
+      setInventoryData(itemsWithStatus);
+
+    } catch (err) {
+      console.error("Error loading inventory:", err);
+
+      setErrorMessage("Failed to load inventory. Please try again.");
+      setInventoryData([]);
+    } finally {
+      setIsLoading(false);
+      console.log("========== END LOAD INVENTORY ==========");
+    }
+  };
+
+  useEffect(() => {
+    loadInventory();
+  }, []);
+
   const categories = useMemo(() => {
-    return [...new Set(inventoryData.map(item => item.category))];
+    return [...new Set(inventoryData.map((item) => item.category))];
   }, [inventoryData]);
 
-  // Filter data based on search term and category
   const filteredData = useMemo(() => {
-    return inventoryData.filter(item => {
-      const matchesSearch = item.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                           item.id.toLowerCase().includes(searchTerm.toLowerCase());
-      const matchesCategory = selectedCategory === '' || item.category === selectedCategory;
+    return inventoryData.filter((item) => {
+      const matchesSearch =
+        item.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        String(item.id).toLowerCase().includes(searchTerm.toLowerCase());
+
+      const matchesCategory =
+        selectedCategory === '' || item.category === selectedCategory;
+
       return matchesSearch && matchesCategory;
     });
   }, [inventoryData, searchTerm, selectedCategory]);
 
-  // Handle edit button click
   const handleEditClick = (item) => {
     setSelectedItem(item);
     setIsAdjustmentFormOpen(true);
   };
 
-  // Handle adjustment submission - update inventory data
-  const handleAdjustmentSubmit = (adjustmentData) => {
-    // Find and update the item in the inventory
-    setInventoryData(prevData =>
-      prevData.map(item => {
-        if (item.id === adjustmentData.itemId) {
-          // Calculate new stock based on adjustment
-          const newStock = item.inStock + adjustmentData.quantity;
-          const newStatus = calculateStatus(newStock);
-          
-          return {
-            ...item,
-            inStock: newStock,
-            status: newStatus,
-          };
-        }
-        return item;
-      })
-    );
+  const handleAdjustmentSubmit = async (adjustmentData) => {
+    try {
+      await updateInventory(adjustmentData.itemId, {
+        quantity: adjustmentData.quantity,
+        reason: adjustmentData.reason,
+        notes: adjustmentData.notes,
+      });
 
-    setIsAdjustmentFormOpen(false);
-    setSelectedItem(null);
+      setToast({
+        type: 'success',
+        message: `✅ Successfully adjusted ${adjustmentData.itemName}!`,
+      });
+
+      await loadInventory();
+
+      setTimeout(() => setToast(null), 3000);
+
+    } catch (err) {
+      setToast({
+        type: 'error',
+        message: `❌ Failed to update inventory: ${err.message}`,
+      });
+
+      setTimeout(() => setToast(null), 3000);
+      throw err;
+    }
   };
 
-  // Handle modal close
   const handleModalClose = () => {
     setIsAdjustmentFormOpen(false);
     setSelectedItem(null);
   };
 
+  const clearToast = () => setToast(null);
+
   return (
     <div className="inventory-container">
-      <div className="controls-section" data-testid="controls-section">
+
+      {toast && (
+        <div
+          className={`toast toast-${toast.type}`}
+          data-testid="toast-message"
+          onClick={clearToast}
+          style={{
+            position: 'fixed',
+            top: '20px',
+            right: '20px',
+            padding: '16px 24px',
+            borderRadius: '8px',
+            fontSize: '16px',
+            fontWeight: '500',
+            zIndex: 9999,
+            animation: 'slideIn 0.3s ease',
+            boxShadow: '0 4px 12px rgba(0,0,0,0.15)',
+            backgroundColor: toast.type === 'success' ? '#4CAF50' : '#f44336',
+            color: 'white',
+            cursor: 'pointer',
+          }}
+        >
+          {toast.message}
+        </div>
+      )}
+
+      <div className="controls-section">
         <SearchInput
           value={searchTerm}
           onChange={setSearchTerm}
-          data-testid="search-input-field"
         />
+
         <FilterDropdown
           categories={categories}
           selectedCategory={selectedCategory}
           onChange={setSelectedCategory}
-          data-testid="filter-dropdown-field"
         />
       </div>
 
       <div className="table-wrapper">
-        <table aria-label="inventory-table" data-testid="inventory-data-table">
-          <thead>
-            <tr>
-              <th>ITEM ID</th>
-              <th>NAME</th>
-              <th>CATEGORY</th>
-              <th>IN STOCK</th>
-              <th>STATUS</th>
-              <th>ACTION</th>
-            </tr>
-          </thead>
-          <tbody>
-            {filteredData.length > 0 ? (
-              filteredData.map(item => (
-                <tr key={item.id} data-testid={`row-${item.id}`}>
-                  <td data-testid={`cell-id-${item.id}`}>{item.id}</td>
-                  <td data-testid={`cell-name-${item.id}`}>{item.name}</td>
-                  <td data-testid={`cell-category-${item.id}`}>{item.category}</td>
-                  <td data-testid={`cell-stock-${item.id}`}>{item.inStock}</td>
-                  <td>
-                    <StockStatusBadge 
-                      status={item.status} 
-                      inStock={item.inStock}
-                      data-testid={`badge-${item.id}`}
-                    />
-                  </td>
-                  <td>
-                    <button
-                      className="edit-btn"
-                      onClick={() => handleEditClick(item)}
-                      data-testid={`edit-btn-${item.id}`}
-                      aria-label={`Edit ${item.name}`}
-                    >
-                      Edit
-                    </button>
+        {isLoading ? (
+          <div style={{ textAlign: 'center', padding: '20px' }}>
+            Loading inventory...
+          </div>
+        ) : errorMessage ? (
+          <div style={{ textAlign: 'center', padding: '20px', color: 'red' }}>
+            {errorMessage}
+          </div>
+        ) : (
+          <table>
+            <thead>
+              <tr>
+                <th>ITEM ID</th>
+                <th>NAME</th>
+                <th>CATEGORY</th>
+                <th>IN STOCK</th>
+                <th>STATUS</th>
+                <th>ACTION</th>
+              </tr>
+            </thead>
+
+            <tbody>
+              {filteredData.length > 0 ? (
+                filteredData.map((item) => (
+                  <tr key={item.id}>
+                    <td>{item.id}</td>
+                    <td>{item.name}</td>
+                    <td>{item.category}</td>
+                    <td>{item.inStock}</td>
+
+                    <td>
+                      <StockStatusBadge
+                        status={item.status}
+                        inStock={item.inStock}
+                      />
+                    </td>
+
+                    <td>
+                      <button
+                        className="edit-btn"
+                        onClick={() => handleEditClick(item)}
+                      >
+                        Edit
+                      </button>
+                    </td>
+                  </tr>
+                ))
+              ) : (
+                <tr>
+                  <td
+                    colSpan={6}
+                    style={{ textAlign: 'center', padding: '20px' }}
+                  >
+                    No items found
                   </td>
                 </tr>
-              ))
-            ) : (
-              <tr>
-                <td colSpan="6" style={{ textAlign: 'center', padding: '20px' }} data-testid="no-results-message">
-                  No items found
-                </td>
-              </tr>
-            )}
-          </tbody>
-        </table>
+              )}
+            </tbody>
+          </table>
+        )}
       </div>
 
       <InventoryAdjustmentForm
@@ -151,7 +232,6 @@ export default function InventoryTable() {
         onClose={handleModalClose}
         item={selectedItem}
         onSubmit={handleAdjustmentSubmit}
-        data-testid="adjustment-modal"
       />
     </div>
   );
