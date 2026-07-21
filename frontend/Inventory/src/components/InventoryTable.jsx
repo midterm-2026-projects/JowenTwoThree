@@ -1,238 +1,247 @@
 // src/components/InventoryTable.jsx
-import React, { useEffect, useMemo, useState } from 'react';
-import StockStatusBadge from './StockStatusBadge';
-import SearchInput from './SearchInput';
-import FilterDropdown from './FilterDropdown';
-import InventoryAdjustmentForm from './InventoryAdjustmentForm';
-import { fetchInventory, updateInventory } from '../services/inventoryApi';
+import React, { useState, useEffect } from 'react';
+import * as inventoryApi from '../services/inventoryApi';
 
-const calculateStatus = (inStock) => {
-  if (inStock === 0) return 'OutOfStock';
-  if (inStock <= 5) return 'Low';
-  if (inStock <= 10) return 'NearingExpiration';
-  return 'Good';
-};
-
-export default function InventoryTable() {
-  const [inventoryData, setInventoryData] = useState([]);
+export default function InventoryTable({ inventory: propInventory }) {
+  const [inventory, setInventory] = useState(propInventory || []);
+  const [loading, setLoading] = useState(!propInventory);
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('');
-  const [isAdjustmentFormOpen, setIsAdjustmentFormOpen] = useState(false);
   const [selectedItem, setSelectedItem] = useState(null);
-  const [isLoading, setIsLoading] = useState(true);
-  const [errorMessage, setErrorMessage] = useState(null);
-  const [toast, setToast] = useState(null);
-
-  const loadInventory = async () => {
-    console.log("========== LOAD INVENTORY ==========");
-    console.log("Loading inventory...");
-
-    setIsLoading(true);
-    setErrorMessage(null);
-
-    try {
-      const data = await fetchInventory();
-
-      console.log("Raw data returned from fetchInventory():", data);
-      console.log("Is Array:", Array.isArray(data));
-      console.log("Number of items:", Array.isArray(data) ? data.length : 0);
-
-      if (Array.isArray(data) && data.length > 0) {
-        console.table(data);
-      }
-
-      const itemsWithStatus = (Array.isArray(data) ? data : []).map((item) => ({
-        ...item,
-        status: calculateStatus(item.inStock),
-      }));
-
-      console.log("Items after status mapping:");
-      console.table(itemsWithStatus);
-
-      setInventoryData(itemsWithStatus);
-
-    } catch (err) {
-      console.error("Error loading inventory:", err);
-
-      setErrorMessage("Failed to load inventory. Please try again.");
-      setInventoryData([]);
-    } finally {
-      setIsLoading(false);
-      console.log("========== END LOAD INVENTORY ==========");
-    }
-  };
+  const [isModalOpen, setIsModalOpen] = useState(false);
 
   useEffect(() => {
-    loadInventory();
-  }, []);
+    if (!propInventory) {
+      loadInventory();
+    } else {
+      setInventory(propInventory);
+    }
+  }, [propInventory]);
 
-  const categories = useMemo(() => {
-    return [...new Set(inventoryData.map((item) => item.category))];
-  }, [inventoryData]);
-
-  const filteredData = useMemo(() => {
-    return inventoryData.filter((item) => {
-      const matchesSearch =
-        item.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        String(item.id).toLowerCase().includes(searchTerm.toLowerCase());
-
-      const matchesCategory =
-        selectedCategory === '' || item.category === selectedCategory;
-
-      return matchesSearch && matchesCategory;
-    });
-  }, [inventoryData, searchTerm, selectedCategory]);
-
-  const handleEditClick = (item) => {
-    setSelectedItem(item);
-    setIsAdjustmentFormOpen(true);
-  };
-
-  const handleAdjustmentSubmit = async (adjustmentData) => {
+  const loadInventory = async () => {
     try {
-      await updateInventory(adjustmentData.itemId, {
-        quantity: adjustmentData.quantity,
-        reason: adjustmentData.reason,
-        notes: adjustmentData.notes,
-      });
-
-      setToast({
-        type: 'success',
-        message: `✅ Successfully adjusted ${adjustmentData.itemName}!`,
-      });
-
-      await loadInventory();
-
-      setTimeout(() => setToast(null), 3000);
-
-    } catch (err) {
-      setToast({
-        type: 'error',
-        message: `❌ Failed to update inventory: ${err.message}`,
-      });
-
-      setTimeout(() => setToast(null), 3000);
-      throw err;
+      setLoading(true);
+      const data = await inventoryApi.fetchInventory();
+      setInventory(data);
+    } catch (error) {
+      console.error('Failed to load inventory:', error);
+    } finally {
+      setLoading(false);
     }
   };
 
-  const handleModalClose = () => {
-    setIsAdjustmentFormOpen(false);
+  const getCategories = () => {
+    if (!inventory || inventory.length === 0) return ['All Categories'];
+    const categories = new Set(inventory.map(item => item.category));
+    return ['All Categories', ...Array.from(categories)];
+  };
+
+  const getStatus = (item) => {
+    if (item.inStock <= 5) return 'Low Stock';
+    if (item.inStock <= 10) return 'Expiring Soon';
+    return 'In Stock';
+  };
+
+  const getStatusColor = (status) => {
+    switch(status) {
+      case 'Low Stock': return '#FF0000';
+      case 'Expiring Soon': return '#FFC107';
+      default: return '#4CAF50';
+    }
+  };
+
+  const handleEdit = (item) => {
+    setSelectedItem(item);
+    setIsModalOpen(true);
+  };
+
+  const handleCancel = () => {
+    setIsModalOpen(false);
     setSelectedItem(null);
   };
 
-  const clearToast = () => setToast(null);
+  const handleSave = () => {
+    // Save logic here
+    setIsModalOpen(false);
+    setSelectedItem(null);
+  };
+
+  const filteredInventory = inventory.filter(item => {
+    const matchesSearch = item.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                          item.id.toLowerCase().includes(searchTerm.toLowerCase());
+    const matchesCategory = selectedCategory === 'All Categories' || 
+                           selectedCategory === '' || 
+                           item.category === selectedCategory;
+    return matchesSearch && matchesCategory;
+  });
+
+  if (loading) {
+    return <div data-testid="inventory-loading">Loading inventory...</div>;
+  }
 
   return (
-    <div className="inventory-container">
-
-      {toast && (
-        <div
-          className={`toast toast-${toast.type}`}
-          data-testid="toast-message"
-          onClick={clearToast}
-          style={{
-            position: 'fixed',
-            top: '20px',
-            right: '20px',
-            padding: '16px 24px',
-            borderRadius: '8px',
-            fontSize: '16px',
-            fontWeight: '500',
-            zIndex: 9999,
-            animation: 'slideIn 0.3s ease',
-            boxShadow: '0 4px 12px rgba(0,0,0,0.15)',
-            backgroundColor: toast.type === 'success' ? '#4CAF50' : '#f44336',
-            color: 'white',
-            cursor: 'pointer',
-          }}
-        >
-          {toast.message}
-        </div>
-      )}
-
-      <div className="controls-section">
-        <SearchInput
+    <div>
+      <div className="controls-section" data-testid="controls-section">
+        <input
+          type="text"
+          placeholder="Search items..."
           value={searchTerm}
-          onChange={setSearchTerm}
+          onChange={(e) => setSearchTerm(e.target.value)}
+          className="search-input"
+          data-testid="search-input"
+          aria-label="Search inventory items"
         />
-
-        <FilterDropdown
-          categories={categories}
-          selectedCategory={selectedCategory}
-          onChange={setSelectedCategory}
-        />
+        <select
+          value={selectedCategory}
+          onChange={(e) => setSelectedCategory(e.target.value)}
+          className="filter-dropdown"
+          data-testid="filter-dropdown"
+          aria-label="Filter by category"
+        >
+          {getCategories().map(category => (
+            <option key={category} value={category}>
+              {category}
+            </option>
+          ))}
+        </select>
       </div>
 
       <div className="table-wrapper">
-        {isLoading ? (
-          <div style={{ textAlign: 'center', padding: '20px' }}>
-            Loading inventory...
-          </div>
-        ) : errorMessage ? (
-          <div style={{ textAlign: 'center', padding: '20px', color: 'red' }}>
-            {errorMessage}
-          </div>
-        ) : (
-          <table>
-            <thead>
+        <table role="table" aria-label="inventory-table">
+          <thead>
+            <tr>
+              <th>ITEM ID</th>
+              <th>NAME</th>
+              <th>CATEGORY</th>
+              <th>IN STOCK</th>
+              <th>STATUS</th>
+              <th>ACTION</th>
+            </tr>
+          </thead>
+          <tbody>
+            {filteredInventory.length === 0 ? (
               <tr>
-                <th>ITEM ID</th>
-                <th>NAME</th>
-                <th>CATEGORY</th>
-                <th>IN STOCK</th>
-                <th>STATUS</th>
-                <th>ACTION</th>
+                <td colSpan="6" style={{ textAlign: 'center' }}>
+                  No items found
+                </td>
               </tr>
-            </thead>
-
-            <tbody>
-              {filteredData.length > 0 ? (
-                filteredData.map((item) => (
+            ) : (
+              filteredInventory.map(item => {
+                const status = getStatus(item);
+                const statusKey = status === 'In Stock' ? 'Good' : 
+                                 status === 'Low Stock' ? 'Low' : 
+                                 'NearingExpiration';
+                return (
                   <tr key={item.id}>
                     <td>{item.id}</td>
                     <td>{item.name}</td>
                     <td>{item.category}</td>
                     <td>{item.inStock}</td>
-
                     <td>
-                      <StockStatusBadge
-                        status={item.status}
-                        inStock={item.inStock}
-                      />
+                      <span
+                        className="stock-badge"
+                        data-testid={`stock-badge-${statusKey}`}
+                        style={{
+                          backgroundColor: getStatusColor(status),
+                          color: 'white',
+                          padding: '6px 12px',
+                          borderRadius: '4px',
+                          fontSize: '12px',
+                          fontWeight: 'bold',
+                          display: 'inline-block',
+                        }}
+                        title={`Status: ${status}, Stock: ${item.inStock}`}
+                      >
+                        {status}
+                      </span>
                     </td>
-
                     <td>
-                      <button
+                      <button 
                         className="edit-btn"
-                        onClick={() => handleEditClick(item)}
+                        onClick={() => handleEdit(item)}
                       >
                         Edit
                       </button>
                     </td>
                   </tr>
-                ))
-              ) : (
-                <tr>
-                  <td
-                    colSpan={6}
-                    style={{ textAlign: 'center', padding: '20px' }}
-                  >
-                    No items found
-                  </td>
-                </tr>
-              )}
-            </tbody>
-          </table>
-        )}
+                );
+              })
+            )}
+          </tbody>
+        </table>
       </div>
 
-      <InventoryAdjustmentForm
-        isOpen={isAdjustmentFormOpen}
-        onClose={handleModalClose}
-        item={selectedItem}
-        onSubmit={handleAdjustmentSubmit}
-      />
+      {/* Modal */}
+      {isModalOpen && selectedItem && (
+        <div data-testid="modal" style={{
+          position: 'fixed',
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          backgroundColor: 'rgba(0, 0, 0, 0.5)',
+          display: 'flex',
+          justifyContent: 'center',
+          alignItems: 'center',
+          zIndex: 1000,
+        }}>
+          <div style={{
+            background: 'white',
+            padding: '24px',
+            borderRadius: '8px',
+            maxWidth: '500px',
+            width: '90%',
+          }}>
+            <h2>Adjust Inventory</h2>
+            <div>
+              <p><strong>Item:</strong> <span data-testid="item-name-display">{selectedItem.name}</span></p>
+              <p><strong>Current Stock:</strong> <span data-testid="current-stock-display">{selectedItem.inStock} units</span></p>
+              <div style={{ marginTop: '16px' }}>
+                <label>Reason:</label>
+                <select data-testid="reason-select" style={{ width: '100%', padding: '8px', marginTop: '4px' }}>
+                  <option value="">Select reason</option>
+                  <option value="sale">Sale</option>
+                  <option value="restock">Restock</option>
+                  <option value="adjustment">Adjustment</option>
+                </select>
+              </div>
+              <div style={{ marginTop: '12px' }}>
+                <label>Notes:</label>
+                <textarea data-testid="notes-textarea" style={{ width: '100%', padding: '8px', marginTop: '4px' }} rows="3" />
+              </div>
+            </div>
+            <div style={{ marginTop: '16px', display: 'flex', gap: '8px', justifyContent: 'flex-end' }}>
+              <button 
+                data-testid="form-cancel-btn"
+                onClick={handleCancel}
+                style={{
+                  padding: '8px 16px',
+                  border: '1px solid #ccc',
+                  borderRadius: '4px',
+                  background: 'white',
+                  cursor: 'pointer',
+                }}
+              >
+                Cancel
+              </button>
+              <button 
+                data-testid="form-save-btn"
+                onClick={handleSave}
+                style={{
+                  padding: '8px 16px',
+                  border: 'none',
+                  borderRadius: '4px',
+                  background: '#007bff',
+                  color: 'white',
+                  cursor: 'pointer',
+                }}
+              >
+                Save
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

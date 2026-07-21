@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen, within, waitFor } from '@testing-library/react';
+import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import InventoryTable from '../components/InventoryTable';
 import * as inventoryApi from '../services/inventoryApi';
@@ -33,7 +33,6 @@ describe('InventoryTable Integration Tests', () => {
 
   it('renders the inventory table with all items', async () => {
     await renderLoaded();
-    // Wait for data to appear
     await waitFor(() => {
       expect(screen.getByText('Coffee Beans')).toBeInTheDocument();
     });
@@ -51,7 +50,12 @@ describe('InventoryTable Integration Tests', () => {
 
   it('displays filter dropdown', async () => {
     await renderLoaded();
-    expect(screen.getByTestId('filter-dropdown')).toBeInTheDocument();
+    await waitFor(() => {
+      const dropdown = screen.getByTestId('filter-dropdown');
+      expect(dropdown).toBeInTheDocument();
+      const options = dropdown.querySelectorAll('option');
+      expect(options.length).toBeGreaterThan(1);
+    });
   });
 
   it('shows stock status badges for all items', async () => {
@@ -74,7 +78,8 @@ describe('InventoryTable Integration Tests', () => {
     await renderLoaded();
     const editButtons = screen.getAllByRole('button', { name: /edit/i });
     await user.click(editButtons[0]);
-    expect(screen.getByTestId('modal')).toBeInTheDocument();
+    const modal = screen.getByTestId('modal');
+    expect(modal).toBeInTheDocument();
     expect(screen.getByText('Adjust Inventory')).toBeInTheDocument();
   });
 
@@ -83,6 +88,9 @@ describe('InventoryTable Integration Tests', () => {
     await renderLoaded();
     const editButtons = screen.getAllByRole('button', { name: /edit/i });
     await user.click(editButtons[1]);
+    await waitFor(() => {
+      expect(screen.getByTestId('modal')).toBeInTheDocument();
+    });
     expect(screen.getByTestId('item-name-display')).toHaveTextContent('Milk');
     expect(screen.getByTestId('current-stock-display')).toHaveTextContent('5 units');
   });
@@ -95,7 +103,9 @@ describe('InventoryTable Integration Tests', () => {
     expect(screen.getByTestId('modal')).toBeInTheDocument();
 
     await user.click(screen.getByTestId('form-cancel-btn'));
-    expect(screen.queryByTestId('modal')).not.toBeInTheDocument();
+    await waitFor(() => {
+      expect(screen.queryByTestId('modal')).not.toBeInTheDocument();
+    });
   });
 
   it('filters items by search term', async () => {
@@ -109,7 +119,15 @@ describe('InventoryTable Integration Tests', () => {
   it('filters items by category', async () => {
     const user = userEvent.setup();
     await renderLoaded();
+    
+    await waitFor(() => {
+      const dropdown = screen.getByTestId('filter-dropdown');
+      const options = dropdown.querySelectorAll('option');
+      expect(options.length).toBeGreaterThan(1);
+    });
+    
     await user.selectOptions(screen.getByTestId('filter-dropdown'), 'Dairy');
+    
     expect(screen.getByText('Milk')).toBeInTheDocument();
     expect(screen.getByText('Yogurt')).toBeInTheDocument();
     expect(screen.queryByText('Coffee Beans')).not.toBeInTheDocument();
@@ -118,6 +136,13 @@ describe('InventoryTable Integration Tests', () => {
   it('combines search and filter', async () => {
     const user = userEvent.setup();
     await renderLoaded();
+    
+    await waitFor(() => {
+      const dropdown = screen.getByTestId('filter-dropdown');
+      const options = dropdown.querySelectorAll('option');
+      expect(options.length).toBeGreaterThan(1);
+    });
+    
     await user.selectOptions(screen.getByTestId('filter-dropdown'), 'Dairy');
     await user.type(screen.getByTestId('search-input'), 'Milk');
     expect(screen.getByText('Milk')).toBeInTheDocument();
@@ -127,12 +152,19 @@ describe('InventoryTable Integration Tests', () => {
   it('clears filter and shows all items', async () => {
     const user = userEvent.setup();
     await renderLoaded();
+    
+    await waitFor(() => {
+      const dropdown = screen.getByTestId('filter-dropdown');
+      const options = dropdown.querySelectorAll('option');
+      expect(options.length).toBeGreaterThan(1);
+    });
+    
     const filterDropdown = screen.getByTestId('filter-dropdown');
 
     await user.selectOptions(filterDropdown, 'Beverage');
     expect(screen.queryByText('Milk')).not.toBeInTheDocument();
 
-    await user.selectOptions(filterDropdown, '');
+    await user.selectOptions(filterDropdown, 'All Categories');
     expect(screen.getByText('Coffee Beans')).toBeInTheDocument();
     expect(screen.getByText('Milk')).toBeInTheDocument();
   });
@@ -141,7 +173,6 @@ describe('InventoryTable Integration Tests', () => {
     const user = userEvent.setup();
     await renderLoaded();
     await user.type(screen.getByTestId('search-input'), 'NonexistentItem');
-    // Check for "No items found" message or verify only header row exists
     const noItemsText = screen.queryByText(/no items found/i);
     const rows = screen.getAllByRole('row');
     if (!noItemsText) {
@@ -176,14 +207,15 @@ describe('InventoryTable Integration Tests', () => {
 
   it('displays all categories in filter dropdown', async () => {
     await renderLoaded();
-    const options = screen.getByTestId('filter-dropdown').querySelectorAll('option');
-    const categories = Array.from(options).map((opt) => opt.textContent);
-
-    expect(categories).toContain('All Categories');
-    expect(categories).toContain('Beverage');
-    expect(categories).toContain('Dairy');
-    expect(categories).toContain('Pastry');
-    expect(categories).toContain('Snacks');
+    await waitFor(() => {
+      const options = screen.getByTestId('filter-dropdown').querySelectorAll('option');
+      const categories = Array.from(options).map((opt) => opt.textContent);
+      expect(categories).toContain('All Categories');
+      expect(categories).toContain('Beverage');
+      expect(categories).toContain('Dairy');
+      expect(categories).toContain('Pastry');
+      expect(categories).toContain('Snacks');
+    });
   });
 
   it('can edit multiple items sequentially', async () => {
@@ -192,12 +224,26 @@ describe('InventoryTable Integration Tests', () => {
 
     const editButtons = screen.getAllByRole('button', { name: /edit/i });
     
+    // Edit first item (Coffee Beans)
     await user.click(editButtons[0]);
+    await waitFor(() => {
+      expect(screen.getByTestId('modal')).toBeInTheDocument();
+    });
     expect(screen.getByTestId('item-name-display')).toHaveTextContent('Coffee Beans');
     await user.click(screen.getByTestId('form-cancel-btn'));
+    await waitFor(() => {
+      expect(screen.queryByTestId('modal')).not.toBeInTheDocument();
+    });
 
+    // Edit second item (Milk)
     await user.click(editButtons[1]);
+    await waitFor(() => {
+      expect(screen.getByTestId('modal')).toBeInTheDocument();
+    });
     expect(screen.getByTestId('item-name-display')).toHaveTextContent('Milk');
     await user.click(screen.getByTestId('form-cancel-btn'));
+    await waitFor(() => {
+      expect(screen.queryByTestId('modal')).not.toBeInTheDocument();
+    });
   });
 });
