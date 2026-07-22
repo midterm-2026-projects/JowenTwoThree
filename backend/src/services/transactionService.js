@@ -9,276 +9,118 @@ const {
 
 let transactionHistory = [];
 
+function saveTransaction(data) {
 
-// Save Transaction
-async function saveTransaction(data) {
+  if (!Array.isArray(data.cart) || data.cart.length === 0) {
 
-  if (!data.cart || !Array.isArray(data.cart) || data.cart.length === 0) {
-    throw new Error("Cannot save transaction: Cart is invalid.");
+    throw new Error(
+      "Cannot save transaction: Cart is invalid."
+    );
   }
 
-
-  const subtotal = calculateSubtotal(data.cart);
-
-
-  const discount = calculateDiscount(
-    subtotal,
-    data.discountType,
-    data.discountValue
-  );
-
-
   const transaction = {
-
-    transaction_number:
-      `TXN-${Date.now()}`,
-
-    idempotency_key:
-      crypto.randomUUID(),
-
-
-    customer_count:
-      data.customerCount || 1,
-
-
+    id: `TXN-${Date.now()}`,
+    customerCount:
+      Number(data.customerCount || 1),
     cart:
       data.cart.map(item => ({
         ...item,
-        price: Number(item.price),
-        quantity: Number(item.quantity)
+        price:
+          Number(item.price || 0),
+        quantity:
+          Number(item.quantity || 1)
       })),
 
-
-    subtotal:
-      Number(subtotal),
-
-
-    discount:
-      Number(discount),
-
-
-    total:
-      Number(subtotal - discount),
-
-
-    discount_type:
-      data.discountType || "none",
-
-
-    discount_value:
-      Number(data.discountValue || 0),
-
-
-    special_instructions:
-      data.specialInstructions || null,
-
-
-    payment_method:
-      data.paymentMethod || "CASH",
-
-
-    cash_received:
-      Number(data.cashReceived || 0),
-
-
-    change_amount:
-      Number(data.changeAmount || 0),
-
-
-    created_at:
-      new Date().toISOString()
-
-  };
-
-
-
-  // Save to Supabase if available
-
-  if (supabase && typeof supabase.from === "function") {
-
-    const { data: saved, error } =
-      await supabase
-        .from("transactions")
-        .insert(transaction)
-        .select()
-        .single();
-
-
-    if(error){
-      throw error;
-    }
-
-
-    return saved;
-
-  }
-
-
-
-  // Test fallback
-
-  transactionHistory.push(transaction);
-
-
-  return transaction;
-
-}
-
-
-
-
-// Get History
-async function getTransactionHistory(){
-
-
-  if(supabase && typeof supabase.from === "function"){
-
-
-    const {data,error} =
-      await supabase
-      .from("transactions")
-      .select("*")
-      .order(
-        "created_at",
-        {
-          ascending:false
-        }
-      );
-
-
-    if(error){
-      throw error;
-    }
-
-
-    return data;
-
-  }
-
-
-
-  return transactionHistory.sort(
-    (a,b)=>
-      new Date(b.created_at) -
-      new Date(a.created_at)
-  );
-
-}
-
-
-
-
-// Get Transaction By ID
-async function getTransactionById(id){
-
-
-  if(supabase && typeof supabase.from === "function"){
-
-
-    const {data,error} =
-      await supabase
-      .from("transactions")
-      .select("*")
-      .eq(
-        "transaction_number",
-        id
-      )
-      .single();
-
-
-    if(error){
-      return undefined;
-    }
-
-
-    return data;
-
-  }
-
-
-
-  return transactionHistory.find(
-    transaction =>
-      transaction.transaction_number === id
-  );
-
-}
-
-
-
-
-// Format Receipt
-function formatReceipt(transaction){
-
-
-  return {
-
-    receiptId:
-      transaction.transaction_number,
-
-
-    createdAt:
-      transaction.created_at,
-
-
-    customerCount:
-      transaction.customer_count,
-
-
-    items:
-      transaction.cart,
-
-
-    subtotal:
-      transaction.subtotal,
-
+    specialInstructions:
+      data.specialInstructions || "",
 
     discountType:
-      transaction.discount_type,
-
+      data.discountType || "none",
 
     discountValue:
-      transaction.discount_value,
+      Number(data.discountValue || 0),
 
+    subtotal:
+      Number(data.subtotal || 0),
 
     discountAmount:
-      transaction.discount,
-
+      Number(
+        data.discountAmount ??
+        data.discount ??
+        0
+      ),
 
     totalAmount:
-      transaction.total,
+      Number(
+        data.totalAmount ??
+        data.total ??
+        0
+      ),
 
+    paymentMethod:
+      data.paymentMethod || "CASH",
 
-    specialInstructions:
-      transaction.special_instructions
+    cashReceived:
+      Number(data.cashReceived || 0),
 
+    changeAmount:
+      Number(data.changeAmount || 0),
+
+    createdAt:
+      new Date()
   };
 
+  transactionHistory.unshift(transaction);
+  return transaction;
 }
 
+function getTransactionHistory(){
+  return transactionHistory;
+}
 
+function getTransactionById(id){
+  const transaction =
+    transactionHistory.find(
+      item => item.id === id
+    );
 
+  return transaction;
+}
 
-// Test helper
+function formatReceipt(transaction){
+
+  return {
+    receiptId:
+      transaction.id,
+    createdAt:
+      transaction.createdAt,
+    customerCount:
+      transaction.customerCount,
+    items:
+      transaction.cart,
+    subtotal:
+      transaction.subtotal,
+    discountType:
+      transaction.discountType,
+    discountValue:
+      transaction.discountValue,
+    discountAmount:
+      transaction.discountAmount,
+    totalAmount:
+      transaction.totalAmount,
+    specialInstructions:
+      transaction.specialInstructions
+  };
+}
+
 function clearHistory(){
-
   transactionHistory = [];
-
 }
-
-
-
 
 module.exports = {
-
   saveTransaction,
-
   getTransactionHistory,
-
   getTransactionById,
-
   formatReceipt,
-
   clearHistory
-
 };
