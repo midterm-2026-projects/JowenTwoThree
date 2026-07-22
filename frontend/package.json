@@ -10,9 +10,12 @@
     "preview": "vite preview",
     "lint": "echo \"No linter configured\"",
     "test": "vitest",
-    "test:unit": "vitest"
+    "test:unit": "vitest",
+    "test:e2e": "npx playwright test"
+
   },
   "dependencies": {
+    "@playwright/test": "^1.61.1",
     "ansi-regex": "^5.0.1",
     "ansi-styles": "^5.2.0",
     "aria-query": "^5.3.0",
