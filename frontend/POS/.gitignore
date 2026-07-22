@@ -11,3 +11,5 @@ build/
 *.swp
 *.swo
 coverage/
+test-results/
+playwright-report/
