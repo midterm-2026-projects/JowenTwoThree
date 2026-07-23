@@ -80,7 +80,7 @@ jobs:
           name: frontend-coverage
           path: frontend/coverage/
 
-  # ─────────────────────────────────────────────
+    # ─────────────────────────────────────────────
   # 3. E2E Tests
   # ─────────────────────────────────────────────
   e2e-tests:
@@ -110,17 +110,19 @@ jobs:
         with:
           node-version: "20"
 
+      # Backend
       - name: Install backend dependencies
-        run: npm ci
         working-directory: backend
-
-      - name: Install frontend dependencies
         run: npm ci
-        working-directory: frontend
+
+      # POS (Playwright Project)
+      - name: Install POS dependencies
+        working-directory: frontend/POS
+        run: npm ci
 
       - name: Install Playwright browsers
+        working-directory: frontend/POS
         run: npx playwright install --with-deps
-        working-directory: frontend
 
       - name: Wait for MySQL
         run: |
@@ -140,13 +142,13 @@ jobs:
         env:
           MYSQL_PWD: ""
 
-      - name: Build frontend
+      - name: Build POS
+        working-directory: frontend/POS
         run: npm run build
-        working-directory: frontend
 
-      - name: Run E2E tests
+      - name: Run Playwright E2E Tests
+        working-directory: frontend/POS
         run: npm run test:e2e
-        working-directory: frontend
         env:
           NODE_ENV: test
           DB_HOST: 127.0.0.1
@@ -155,19 +157,19 @@ jobs:
           DB_NAME: weightogo_db
           PORT: 3000
 
-      - name: Upload E2E test results
+      - name: Upload E2E Test Results
         uses: actions/upload-artifact@v4
         if: always()
         with:
           name: e2e-results
-          path: frontend/test-results/
+          path: frontend/POS/test-results/
 
-      - name: Upload E2E screenshots
+      - name: Upload Screenshots
         uses: actions/upload-artifact@v4
         if: failure()
         with:
           name: e2e-screenshots
-          path: frontend/test-results/
+          path: frontend/POS/test-results/
 
   # ─────────────────────────────────────────────
   # 4. Final

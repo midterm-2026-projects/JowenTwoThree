@@ -1,11 +1,25 @@
-import { defineConfig } from 'vitest/config'
+import { defineConfig } from "vitest/config";
 
 export default defineConfig({
   test: {
-    environment: 'jsdom',
+    environment: "jsdom",
     globals: true,
-    // Use the Inventory app's setup file. The test suite for this repo lives under 
-    // SetupNiJoben/frontend/Inventory/src/__tests__.
-    setupFiles: ['./Inventory/src/setupTests.js']
+
+    setupFiles: [
+      "./Inventory/src/setupTests.js"
+    ],
+
+    exclude: [
+      "**/node_modules/**",
+      "**/dist/**",
+      "**/coverage/**",
+
+      // Ignore Playwright tests
+      "**/POS/e2e/**",
+
+      // Ignore Playwright outputs
+      "**/playwright-report/**",
+      "**/test-results/**"
+    ]
   }
-})
+});
