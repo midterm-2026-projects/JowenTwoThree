@@ -2,12 +2,11 @@
   "name": "jowen-two-three-backend",
   "version": "0.1.0",
   "private": true,
-  "scripts": {
-    "start": "node src/server.js",
-    "dev": "node src/server.js",
-    "lint": "eslint src",
-    "lint:fix": "eslint src --fix",
-    "test:unit": "vitest"
+   "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "test": "vitest run",
+    "test:watch": "vitest"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.45.0",

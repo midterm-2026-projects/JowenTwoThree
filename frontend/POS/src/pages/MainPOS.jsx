@@ -142,5 +142,5 @@ export default function MainPOS({ user, onLogout }) {
         )}
       </main>
     </div>
-  )
+  );
 }

@@ -13,8 +13,8 @@ const payload = {
       id: 1,
       name: "Burger",
       price: 100,
-      quantity: 2
-    }
+      quantity: 2,
+    },
   ],
 
   subtotal: 200,
@@ -73,9 +73,8 @@ describe("Transaction Routes", () => {
       .post("/api/transactions")
       .send(payload);
 
-    const response =
-      await request(app)
-        .get("/api/transactions/history");
+    const response = await request(app)
+      .get("/api/transactions/history");
 
     expect(response.status)
       .toBe(200);
@@ -97,7 +96,7 @@ describe("Transaction Routes", () => {
         .send(payload);
 
     const id =
-      saved.body.transaction.id;
+      saved.body.transaction.transaction_number;
 
     const response =
       await request(app)
@@ -132,5 +131,4 @@ describe("Transaction Routes", () => {
     expect(response.body.success)
       .toBe(false);
   });
-
 });

@@ -1,11 +1,25 @@
-import { defineConfig } from 'vitest/config'
+import { defineConfig } from "vitest/config";
+import react from "@vitejs/plugin-react";
 
 export default defineConfig({
+  plugins: [react()],
+
   test: {
-    environment: 'jsdom',
+    environment: "jsdom",
     globals: true,
-    // Use the Inventory app's setup file. The test suite for this repo lives under 
-    // SetupNiJoben/frontend/Inventory/src/__tests__.
-    setupFiles: ['./Inventory/src/setupTests.js']
+    setupFiles: ["./tests/setup.js"],
+
+    exclude: [
+      "e2e/**",
+      "tests/e2e/**",
+      "playwright-report/**",
+      "test-results/**",
+      "node_modules/**"
+    ],
+
+    coverage: {
+      provider: "v8",
+      reporter: ["text", "json", "html"]
+    }
   }
-})
+});

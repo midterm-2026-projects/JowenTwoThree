@@ -1,7 +1,6 @@
 import { describe, it, expect, beforeEach } from "vitest";
 
-const TransactionService =
-  require("../../src/services/transactionService.js");
+const TransactionService = require("../../src/services/transactionService.js");
 
 const createBaseProps = () => ({
   cart: [
@@ -9,31 +8,21 @@ const createBaseProps = () => ({
       id: 1,
       name: "Burger",
       price: 100,
-      quantity: 2
+      quantity: 2,
     },
     {
       id: 2,
       name: "Fries",
       price: 50,
-      quantity: 1
-    }
+      quantity: 1,
+    },
   ],
 
   customerCount: 2,
-  specialInstructions:
-    "No onions",
-  discountType:
-    "none",
-  discountValue:
-    0,
-  subtotal:
-    250,
-  discountAmount:
-    0,
-  totalAmount:
-    250
+  specialInstructions: "No onions",
+  discountType: "none",
+  discountValue: 0,
 });
-
 
 describe("TransactionService", () => {
   beforeEach(() => {
@@ -41,176 +30,150 @@ describe("TransactionService", () => {
   });
 
   describe("saveTransaction()", () => {
-    it("should save transaction successfully", () => {
-      const saved =
-        TransactionService.saveTransaction(
-          createBaseProps()
-        );
-
-      expect(saved).toHaveProperty("id");
-      expect(saved.cart)
-        .toHaveLength(2);
-
-      const history =
-        TransactionService.getTransactionHistory();
-
-      expect(history)
-        .toHaveLength(1);
-    });
-
-    it("should return transactions ordered newest first", () => {
-      TransactionService.saveTransaction(
+    it("should save transaction successfully", async () => {
+      const saved = await TransactionService.saveTransaction(
         createBaseProps()
       );
 
-      TransactionService.saveTransaction({
+      expect(saved).toHaveProperty("transaction_number");
+      expect(saved.cart).toHaveLength(2);
+
+      const history =
+        await TransactionService.getTransactionHistory();
+
+      expect(history).toHaveLength(1);
+    });
+
+    it("should return transactions ordered newest first", async () => {
+      await TransactionService.saveTransaction(
+        createBaseProps()
+      );
+
+      await TransactionService.saveTransaction({
         ...createBaseProps(),
-        discountType:"percentage",
-        discountValue:10,
-        discountAmount:25,
-        totalAmount:225
+        discountType: "percentage",
+        discountValue: 10,
       });
 
       const history =
-        TransactionService.getTransactionHistory();
+        await TransactionService.getTransactionHistory();
 
-      expect(history)
-        .toHaveLength(2);
+      expect(history).toHaveLength(2);
 
-      expect(history[0].totalAmount)
-        .toBe(225);
-
-      expect(history[1].totalAmount)
-        .toBe(250);
+      expect(history[0].total).toBe(250);
+      expect(history[1].total).toBe(225);
     });
 
-    it("should throw error when cart is invalid",()=>{
-      expect(()=>{
+    it("should throw error when cart is invalid", async () => {
+      await expect(
         TransactionService.saveTransaction({
           ...createBaseProps(),
-          cart:null
-        });
-
-      }).toThrow(
+          cart: null,
+        })
+      ).rejects.toThrow(
         "Cannot save transaction: Cart is invalid."
       );
     });
   });
 
-  describe("Transaction Record Mapping",()=>{
-    it("should generate transaction metadata",()=>{
+  describe("Transaction Record Mapping", () => {
+    it("should generate transaction metadata", async () => {
       const saved =
-        TransactionService.saveTransaction(
+        await TransactionService.saveTransaction(
           createBaseProps()
         );
-      expect(saved)
-        .toHaveProperty("id");
-      expect(saved)
-        .toHaveProperty("createdAt");
-      expect(saved.id)
-        .toMatch(/^TXN-/);
+
+      expect(saved).toHaveProperty("transaction_number");
+      expect(saved).toHaveProperty("created_at");
+
+      expect(saved.transaction_number).toMatch(/^TXN-/);
+
       expect(
-        Date.parse(saved.createdAt)
-      )
-      .not
-      .toBeNaN();
+        Date.parse(saved.created_at)
+      ).not.toBeNaN();
     });
 
-    it("should correctly map transaction values",()=>{
+    it("should correctly map transaction values", async () => {
       const saved =
-        TransactionService.saveTransaction(
+        await TransactionService.saveTransaction(
           createBaseProps()
         );
 
-      expect(saved.customerCount)
-        .toBe(2);
-      expect(saved.specialInstructions)
-        .toBe("No onions");
-      expect(saved.discountType)
-        .toBe("none");
-      expect(saved.discountValue)
-        .toBe(0);
-      expect(saved.subtotal)
-        .toBe(250);
-      expect(saved.totalAmount)
-        .toBe(250);
+      expect(saved.customer_count).toBe(2);
+      expect(saved.special_instructions).toBe("No onions");
+      expect(saved.discount_type).toBe("none");
+      expect(saved.discount_value).toBe(0);
+      expect(saved.subtotal).toBe(250);
+      expect(saved.total).toBe(250);
     });
 
-
-    it("should convert cart values to numbers",()=>{
+    it("should convert cart values to numbers", async () => {
       const saved =
-        TransactionService.saveTransaction({
+        await TransactionService.saveTransaction({
           ...createBaseProps(),
-          cart:[
+          cart: [
             {
-              id:1,
-              name:"Burger",
-              price:"100",
-              quantity:"2"
-            }
-          ]
+              id: 1,
+              name: "Burger",
+              price: "100",
+              quantity: "2",
+            },
+          ],
         });
 
-      expect(saved.cart[0].price)
-        .toBe(100);
-
-      expect(saved.cart[0].quantity)
-        .toBe(2);
+      expect(saved.cart[0].price).toBe(100);
+      expect(saved.cart[0].quantity).toBe(2);
     });
   });
 
-  describe("Additional Transaction Features",()=>{
-    it("should retrieve transaction by ID",()=>{
+  describe("Additional Transaction Features", () => {
+    it("should retrieve transaction by ID", async () => {
       const saved =
-        TransactionService.saveTransaction(
+        await TransactionService.saveTransaction(
           createBaseProps()
         );
 
       const result =
-        TransactionService.getTransactionById(
-          saved.id
+        await TransactionService.getTransactionById(
+          saved.transaction_number
         );
 
-      expect(result)
-        .toBeDefined();
+      expect(result).toBeDefined();
 
-      expect(result.id)
-        .toBe(saved.id);
+      expect(result.transaction_number).toBe(
+        saved.transaction_number
+      );
     });
 
-    it("should return undefined for invalid ID",()=>{
+    it("should return undefined for invalid ID", async () => {
       const result =
-        TransactionService.getTransactionById(
+        await TransactionService.getTransactionById(
           "TXN-INVALID"
         );
 
-      expect(result)
-        .toBeUndefined();
+      expect(result).toBeUndefined();
     });
 
-    it("should format receipt correctly",()=>{
+    it("should format receipt correctly", async () => {
       const saved =
-        TransactionService.saveTransaction(
+        await TransactionService.saveTransaction(
           createBaseProps()
         );
 
       const receipt =
-        TransactionService.formatReceipt(
-          saved
-        );
+        TransactionService.formatReceipt(saved);
 
-      expect(receipt)
-      .toEqual({
-        receiptId:saved.id,
-        createdAt:saved.createdAt,
-        customerCount:2,
-        items:saved.cart,
-        subtotal:250,
-        discountType:"none",
-        discountValue:0,
-        discountAmount:0,
-        totalAmount:250,
-        specialInstructions:"No onions"
+      expect(receipt).toEqual({
+        receiptId: saved.transaction_number,
+        createdAt: saved.created_at,
+        customerCount: 2,
+        items: saved.cart,
+        subtotal: 250,
+        discountType: "none",
+        discountValue: 0,
+        discountAmount: 0,
+        totalAmount: 250,
+        specialInstructions: "No onions",
       });
     });
   });

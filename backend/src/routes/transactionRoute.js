@@ -26,7 +26,7 @@ router.post("/", async (req, res) => {
     }
 
     const transaction =
-      TransactionService.saveTransaction(req.body);
+      await TransactionService.saveTransaction(req.body);
 
     return res.status(201).json({
       success: true,
@@ -43,7 +43,7 @@ router.post("/", async (req, res) => {
 
     return res.status(500).json({
       success: false,
-      error: error.message
+      error: error.message,
     });
   }
 });
@@ -52,7 +52,7 @@ router.get("/history", async (req, res) => {
 
   try {
     const history =
-      TransactionService.getTransactionHistory();
+      await TransactionService.getTransactionHistory();
 
     return res.status(200).json({
       success: true,
@@ -76,7 +76,7 @@ router.get("/:id/receipt", async (req,res)=>{
 
   try {
     const transaction =
-      TransactionService.getTransactionById(
+      await TransactionService.getTransactionById(
         req.params.id
       );
 
