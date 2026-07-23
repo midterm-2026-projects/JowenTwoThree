@@ -134,10 +134,9 @@ jobs:
           done
 
       - name: Set up database
-        run: |
-          mysql -h 127.0.0.1 -u root weightogo_db < src/config/schema.sql
-          mysql -h 127.0.0.1 -u root weightogo_db < src/config/seed.sql
         working-directory: backend
+        run: |
+          mysql -h 127.0.0.1 -u root weightogo_db < ../schema.sql
         env:
           MYSQL_PWD: ""
 
